@@ -1,0 +1,80 @@
+<html lang="en">
+	<head>
+		<meta charset="utf-8">
+		<title>Sensorable Cam</title>
+		<meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1">
+		<link rel="stylesheet" href="https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
+		<script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src='https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);})(window,document,'script','dataLayer','GTM-MMGXGM6');</script>
+		<style>
+			body {font-family: sans-serif; background-color: transparent;}
+			#cam {width:70%; margin: auto 15%;}
+			.slick-slide img {width: 100%;}
+			figure {margin: 0; overflow: hidden; position:relative;}
+			figcaption {margin:0; width: 100%; text-align: center; position: absolute; top: 0; background-color: rgba(2,2,2,0.7); padding:5px;}
+			.tTime {padding:0 10px;}
+			a {color: #fff; font-weight:bold;}
+			#cam .slick-prev::before, #cam .slick-next::before {font-size: 40px; line-height: 1;}
+			#cam .slick-prev, #cam .slick-next {width: 40px; height: 40px;}
+			#cam .slick-next {right: 15px;}
+			#cam .slick-prev {left: 15px; z-index:1000;}
+			#cam .slick-slide {height: auto;}
+			#cam .slick-dots {position: inherit; bottom: auto;}
+		</style>
+		<link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/gh/kenwheeler/slick@1.8.1/slick/slick.css">
+		<link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/gh/kenwheeler/slick@1.8.1/slick/slick-theme.css">
+	</head>
+	<body>
+		<noscript>
+			<iframe src="https://www.googletagmanager.com/ns.html?id=GTM-MMGXGM6" height="0" width="0" style="display:none;visibility:hidden"/>
+		</noscript>
+		<div id="cam"/>
+		<script src="https://code.jquery.com/jquery-1.12.4.min.js" integrity="sha256-ZosEbRLbNQzLpnKIkEdrPv7lOy9C27hHQ+Xp8a4MxAQ=" crossorigin="anonymous"></script>
+		<script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
+		<script type="text/javascript" src="https://cdn.jsdelivr.net/gh/kenwheeler/slick@1.8.1/slick/slick.min.js"></script>
+		<script>
+			var camID = (new URL(window.location.href)).searchParams.get("c");
+			
+			var body = $('body');
+			body.css('margin','0');
+			var hInit = $('#cam').outerHeight();
+			//console.log("hInit "+hInit);
+			var timerId =  setInterval(function(){
+				var hCurr = $('#cam').outerHeight();
+				//console.log("hCurr "+hCurr);
+				if (hInit!=hCurr && hCurr!=0) {
+				console.log("hCurr set "+hCurr);
+				window.parent.document.getElementById('iFrameSensorable').style.height = hCurr;
+				clearInterval(timerId);
+				}},1000);
+
+				
+			$(function() {
+
+				var req = $.get('https://hubsy-timelapse-2.s3.amazonaws.com/'+camID+'/resized/fhd/idx/last100.txt', function(data) {
+					$('#cam').html(data.split('\n').slice(0,20).map(function(url){
+						var iso = url.match(/([^\/]+)(?=\.\w+$)/)[0];
+						var day = new Date(iso.slice(0,4),iso.slice(4,6)-1,+iso.slice(6,8)+1); 
+						var days=["Saturday","Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
+						var tTime =  iso.slice(9,11) + ':' + iso.slice(11,13);
+						var tD = day.getDay();
+						var tDay =  days[day.getDay()];
+						var tDate =  iso.slice(6,8)+ '/' + iso.slice(4,6)+ '/' + iso.slice(0,4);
+						url = url.replace("hubsy-timelapse-2.s3.amazonaws.com","photos.sensorable.io")
+						return '<div><a target="_blank" href="' + url.replace("GMT+13:00.jpg","GMT%2B13%3A00.jpg") +  '"><figure><img data-lazy="' + url.replace("GMT+13:00.jpg","GMT%2B13%3A00.jpg") +  '" alt=""><figcaption><span class="tDay">' + tDay + '</span><span class="tTime">' + tTime + '</span><span class="tDate">' + tDate + '</span></figcaption></figure></a></div>'
+					}).join(''));
+
+					$('#cam').on('lazyLoaded', function(event, slick, image, imageSource) {
+						console.log("ch "+document.body.clientHeight);
+						//window.parent.document.getElementById('iFrameSensorable').style.height=$('#cam').innerWidth();
+					} );
+					
+					$('#cam').slick({lazyLoad: 'progressive', dots: true});
+					
+				})
+			});
+
+
+			
+		</script>
+	</body>
+</html>

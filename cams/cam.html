@@ -1,0 +1,200 @@
+<html lang="en">
+
+<head>
+	<meta charset="utf-8">
+	<meta name="robots" content="noindex">
+	<title>Sensorable Cam</title>
+	<meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1">
+	<link rel="stylesheet" href="https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
+	<link rel="stylesheet" href="cams.css">
+	<script>(function (w, d, s, l, i) { w[l] = w[l] || []; w[l].push({ 'gtm.start': new Date().getTime(), event: 'gtm.js' }); var f = d.getElementsByTagName(s)[0], j = d.createElement(s), dl = l != 'dataLayer' ? '&l=' + l : ''; j.async = true; j.src = 'https://www.googletagmanager.com/gtm.js?id=' + i + dl; f.parentNode.insertBefore(j, f); })(window, document, 'script', 'dataLayer', 'GTM-MMGXGM6');</script>
+</head>
+
+<body>
+	<noscript>
+		<iframe src="https://www.googletagmanager.com/ns.html?id=GTM-MMGXGM6" height="0" width="0" style="display:none;visibility:hidden"></iframe>
+	</noscript>
+	<!-- Cam strips -->
+	<div class="cam-wrapper">
+		<div class="title">
+			<strong>One Cam View</strong>
+			<span class="refresh" title="Refresh this cam" onclick="refreshStripAuto();">
+				<span class="fas fa-sync"></span>
+			</span>
+			</a>
+			<span title="Daily view">
+				<input type="text" style="display:none" type="text" id="dp-cam">
+				<span onclick="showCalendar();" class="fas fa-calendar-alt"></span>
+			</span>
+		</div>
+		<div class="swiper-wrapper" id="cam"></div>
+	</div>
+	<div style="display:none">
+		<div id="error-msg">
+			<h2 class="error">No images for that date</h2>
+		</div>
+	</div>
+	<script src="https://code.jquery.com/jquery-1.12.4.min.js" integrity="sha256-ZosEbRLbNQzLpnKIkEdrPv7lOy9C27hHQ+Xp8a4MxAQ="
+	 crossorigin="anonymous"></script>
+	<script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
+	<script>
+
+		var interval = 20000;
+		var camID = (new URL(window.location.href)).searchParams.get("c");
+		var dataCache = null; // Stores the prev vesion of the index
+
+		$(function () {
+
+			// Load strips
+			refreshStripAuto();
+		});
+
+		function refreshStripAuto() {
+			refreshStrip();
+			var timerId = $('#cam').data('timerId');
+			if (!timerId) $('#cam').data('timerId', setInterval(function () { refreshStrip(); }, interval));
+		}
+
+		function refreshStrip(idx = 'last100.txt', listSize = 100, filterDate) {
+
+			var idxUrl = 'https://s3.amazonaws.com/hubsy-timelapse-2/' + camID + '/resized/thumb/idx/' + idx;
+
+			//set off refresh button rotation
+			var source = $('#cam').prev().find('.refresh');
+			if (!source) return;
+			$(source).css('opacity', '0.4');
+			$(source).addClass('rotate');
+
+			var req = $.get(idxUrl, function (data) {
+
+				// Populating slides
+				$('#cam').prepend(data.split('\n').slice(0, listSize).map(function (url) {
+
+					if (filterDate && !url.includes(filterDate.replace('-', '').replace('-', ''))) return ''; //only imgs from the specified date are included if specified 
+					if (dataCache && dataCache.search(url) >= 0) return; // there is already that slide on the page
+					if (url.endsWith('.mp4')) return; // a quick and dirty fix - there should be no .mp4 files in the index
+
+					// Extracting ISO date from URL
+					var iso = url.match(/([^\/]+)(?=\.\w+$)/)[0];
+					var title = iso.slice(9, 11) + ':' + iso.slice(11, 13) + '&nbsp;' + iso.slice(6, 8) + '/' + iso.slice(4, 6);
+					var kmh = '';
+					var speed = url.match(/^.*_(\d{3})\.mp4\.jpg?/);
+					var eventClass = (url.includes('_')) ? 'event' : '';
+					if (url.includes('_live')) eventClass = 'live';
+					
+					//jb26qdynbh3/resized/fhd/20180705T100659.101GMT1200_20180705T100705.298GMT1200_GQN758_059.mp4.jpg
+					//camid/timetaken_timeofevent(no meaning)_[optional number plate][_speed.mp4].jpg
+					//if number plate is missing there are 2 __ in place
+
+					var plateMatch = url.match(/.+_(.{6})_\d{3}\.mp4.jpg?/);
+					var plate ='';
+					if (plateMatch) plate = plateMatch[1];
+					var videoSrc = url.substring(0, url.length - 4).replace(camID + '/resized/thumb', 'full/' + camID).replace('_'+plate+'_','_');
+
+					if (speed) {
+						title = iso.slice(9, 11) + ':' + iso.slice(11, 13) + ':' + iso.slice(13, 15) + '&nbsp;' + iso.slice(6, 8) + '/' + iso.slice(4, 6);
+						kmh = `<span><span class='plate'>${plate}</span>${speed[1].replace(/^[0]+/g, "")}kmh</span>`;
+						eventClass = '';
+					}
+					url = url.replace('hubsy-timelapse-2.s3.amazonaws.com', 'photos.sensorable.io');
+
+					var visual = `<img src="${url.replace('GMT+13:00.jpg', 'GMT%2B13%3A00.jpg')}">`;
+					if (url.endsWith('.mp4.jpg')) {
+						visual = `<video controls preload="none" muted src="${videoSrc}" width="100%" height="auto" poster="${url.replace('GMT+13:00.jpg', 'GMT%2B13%3A00.jpg')}"></video>`;
+					}
+
+					return `<a target="_blank" href="${url.replace('GMT+13:00.jpg', 'GMT%2B13%3A00.jpg').replace('thumb', 'fhd')}"><figure>${visual}<figcaption class="${eventClass}"><span>${title}</span>${kmh}</figcaption></figure></a>`;
+
+				}).join(''));
+
+				dataCache = data; // Store for the next iteration comparison
+
+				if ($('#cam').html() == '') $('#cam').html($('#error-msg').html());
+
+				//add next / prev buttons for dates
+				if (filterDate) {
+					var next = addDays(filterDate, 1);
+					var prev = addDays(filterDate, -1);
+					var ndt = formatDate(next);
+					var pdt = formatDate(prev);
+					$('#cam').append('<div class="next-prev"><div class="prev"><span title="View the day before" onclick="showDateStrip(\'' + pdt + '\',\'' + camID + '\')"><span class="fas fa-angle-double-left"></span>' + pdt + '</span></div><div class="now">' + filterDate + '</div><div class="next"><span title="View the day after" onclick="showDateStrip(\'' + ndt + '\',\'' + camID + '\')">' + ndt + '<span class="fas fa-angle-double-right"></span></span></div></div>');
+				}
+
+				//GA reporting
+				window.dataLayer = window.dataLayer || [];
+				window.dataLayer.push({
+					'event': 'idxLoaded',
+					'idxUrl': idxUrl
+				});
+
+			})
+
+				.fail(function () {
+					$('#cam').html($('#error-msg').html);
+				})
+
+				.always(function () {
+					//restore refresh icon
+					if (source != null) {
+						$(source).removeClass('rotate');
+						$(source).animate({ opacity: 1 }, "slow");
+					}
+				});
+
+		}
+
+		function showCalendar() {
+
+			$('#dp-cam').datepicker({
+				showWeek: true,
+				maxDate: 0,
+				dateFormat: "yy-mm-dd",
+				onSelect: function (dateText) { showDateStrip(dateText) }
+			});
+
+			$('#dp-cam').datepicker("show");
+
+		}
+
+		function showDateStrip(dateText) {
+			console.log(dateText);
+			$('#dp-cam').datepicker('setDate', dateText); //this function can be called from outside of the date picker, so it needs to be updated
+			$('html, body').animate({ scrollTop: ($('#cam').offset().top - 50) }, 500);
+			var week = $.datepicker.iso8601Week(new Date(dateText));
+			var year = dateText.substring(0, 4);
+			if (year == '2017') week += 1;
+			var idx = year + week + '.txt';
+			var timerId = $('#cam').data('timerId');
+			if (timerId) {
+				clearInterval(timerId);
+				$('#cam').removeData('timerId');
+			}
+
+			console.log(idx);
+			refreshStrip(idx, 1000, dateText);
+
+		}
+
+		function addDays(date, days) {
+			var result = new Date(date);
+			result.setDate(result.getDate() + days);
+			return result;
+		}
+
+		function formatDate(date) {
+			var month = '' + (date.getMonth() + 1),
+				day = '' + date.getDate(),
+				year = date.getFullYear();
+
+			if (month.length < 2) month = '0' + month;
+			if (day.length < 2) day = '0' + day;
+
+			return [year, month, day].join('-');
+		}
+
+	</script>
+	<script defer src="https://use.fontawesome.com/releases/v5.0.4/js/all.js"></script>
+
+</body>
+
+</html>

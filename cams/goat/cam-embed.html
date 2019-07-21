@@ -1,0 +1,48 @@
+<html lang="en">
+	<head>
+		<meta charset="utf-8">
+		<title>Sensorable Cam</title>
+		<meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1">
+		<link rel="stylesheet" href="https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
+		<script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src='https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);})(window,document,'script','dataLayer','GTM-MMGXGM6');</script>
+		<style>
+			body {width: 98%; margin: 30px auto; font-family: sans-serif; background-color: #aaa;}
+			#cam {width:70%; margin: auto 15%;}
+			.slick-slide img {width: 100%;}
+			figure {margin: 0; overflow: hidden; position:relative;}
+			figcaption {margin:0; width: 100%; text-align: center; position: absolute; top: 0; background-color: rgba(2,2,2,0.7); padding:5px;}
+			a {color: #fff; font-weight:bold;}
+			#cam .slick-prev::before, #cam .slick-next::before {font-size: 40px; line-height: 1;}
+			#cam .slick-prev, #cam .slick-next {width: 40px; height: 40px;}
+			#cam .slick-next {right: 15px;}
+			#cam .slick-prev {left: 15px; z-index:1000;}
+		</style>
+		<link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/gh/kenwheeler/slick@1.8.1/slick/slick.css">
+		<link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/gh/kenwheeler/slick@1.8.1/slick/slick-theme.css">
+	</head>
+	<body>
+		<noscript>
+			<iframe src="https://www.googletagmanager.com/ns.html?id=GTM-MMGXGM6" height="0" width="0" style="display:none;visibility:hidden"/>
+		</noscript>
+		<div id="cam"/>
+		<script src="https://code.jquery.com/jquery-1.12.4.min.js" integrity="sha256-ZosEbRLbNQzLpnKIkEdrPv7lOy9C27hHQ+Xp8a4MxAQ=" crossorigin="anonymous"></script>
+		<script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
+		<script type="text/javascript" src="https://cdn.jsdelivr.net/gh/kenwheeler/slick@1.8.1/slick/slick.min.js"></script>
+		<script>
+			var camID = (new URL(window.location.href)).searchParams.get("c");
+
+			$(function() {
+
+				var req = $.get('https://s3.amazonaws.com/hubsy-timelapse-2/'+camID+'/resized/fhd/idx/last100.txt', function(data) {
+					$('#cam').html(data.split('\n').slice(0,20).map(function(url){
+						var iso = url.match(/([^\/]+)(?=\.\w+$)/)[0];
+						var title =  iso.slice(9,11) + ':' + iso.slice(11,13) + '&nbsp;' + iso.slice(6,8)+ '/' + iso.slice(4,6);
+						return '<div><a target="_blank" href="' + url.replace("GMT+13:00.jpg","GMT%2B13%3A00.jpg").replace("fhd","full") +  '"><figure><img src="' + url.replace("GMT+13:00.jpg","GMT%2B13%3A00.jpg") +  '" alt=""><figcaption>' + title + '</figcaption></figure></a></div>'
+					}).join(''));
+
+					$('#cam').slick({lazyLoad: 'progressive', dots: true});
+				})
+			});    
+		</script>
+	</body>
+</html>
